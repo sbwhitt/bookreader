@@ -70,6 +70,8 @@ BookReader.prototype.init = (function(super_) {
         }
       });
 
+      this.bind(BookReader.eventNames.pageChanged, () => this._startAtCurrentIndex());
+
       // This is fired when the hash changes by one of the other plugins!
       // i.e. it will fire every time the page changes -_-
       // this.bind(BookReader.eventNames.stop, function(e, br) {
@@ -79,6 +81,31 @@ BookReader.prototype.init = (function(super_) {
     super_.call(this);
   };
 })(BookReader.prototype.init);
+
+
+/**
+ * first step towards resolving:
+ * https://github.com/internetarchive/bookreader/issues/1075
+ * https://github.com/internetarchive/bookreader/issues/1071
+ * https://github.com/internetarchive/bookreader/issues/551
+ * updating tts playback to user's position after navigating through pages
+ * much more testing needed
+ * 
+ * Pros:
+ *    this updates tts on...
+ *        Flip left, Flip right, Selecting chapter from ToC, Dragging nav bar
+ *    previously none of the above actions updated tts
+ *
+ * Cons:
+ *    very buggy with 1up and thumb views, hence only allowing in 2up
+ *    jumping back to the previous page with Review 10 seconds button will restart at top of the wrong page
+ *    unnecessarily reloads tts when advancing a page
+ */
+BookReader.prototype._startAtCurrentIndex = function() {
+  if (this.constMode2up === this.mode && this.ttsEngine.playing) {
+    this.ttsEngine.start(this.currentIndex(), this.book.getNumLeafs());
+  }
+};
 
 /** @override */
 BookReader.prototype._createPageContainer = (function (super_) {
@@ -240,34 +267,6 @@ BookReader.prototype.ttsJumpBackward = function () {
   }
   this.ttsEngine.jumpBackward();
 };
-
-/**
- * first step towards resolving:
- * https://github.com/internetarchive/bookreader/issues/1075
- * https://github.com/internetarchive/bookreader/issues/1071
- * https://github.com/internetarchive/bookreader/issues/551
- * updating tts playback to user's position after navigating through pages
- * much more testing needed
- * 
- * Pros:
- *    this updates tts on...
- *        Flip left, Flip right, Selecting chapter from ToC, Dragging nav bar
- *    previously none of the above actions updated tts
- *
- * Cons:
- *    very buggy with 1up and thumb views, hence only allowing in 2up
- *    jumping back to the previous page with Review 10 seconds button will restart at top of the wrong page
- *    unnecessarily reloads tts when advancing a page
- */
-BookReader.prototype.updateFirstIndex = (function(super_) {
-  return function(index) {
-    super_.call(this, index);
-    if (this.constMode2up === this.mode && this.ttsEngine.playing) {
-      this.ttsEngine.stop();
-      this.ttsEngine.start(this.currentIndex(), this.book.getNumLeafs());
-    }
-  };
-})(BookReader.prototype.updateFirstIndex);
 
 BookReader.prototype.ttsUpdateState = function() {
   const isPlaying = !(this.ttsEngine.paused || !this.ttsEngine.playing);
